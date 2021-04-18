@@ -5,7 +5,7 @@ sys.path.append("..")
 
 from imports.packages import *
 
-class LONG_CALEN_SPREAD:
+class SHORT_STRANGLE:
     def __init__(self,root)->None:
         self.first_run = True
         self.stop = False
@@ -49,7 +49,7 @@ class LONG_CALEN_SPREAD:
         
         date_var_stock: StringVar = StringVar()
         date_var_stock.set(" ")
-        lbl_exp_date_stock: Label = Label(top_frame,text='Sell Expiry',justify=LEFT,font=("TkDefaultFont", 10,"bold"))
+        lbl_exp_date_stock: Label = Label(top_frame,text='Expiry',justify=LEFT,font=("TkDefaultFont", 10,"bold"))
         lbl_exp_date_stock.grid(row=row_idx,column=0,sticky='nsw',padx=pdx,pady=pdy)
         #lbl_exp_date_stock.pack(anchor='nw',fill='y', expand=True, side=TOP)
         self.date_combo_box_stock = Combobox(top_frame,width=10,textvariable=date_var_stock) 
@@ -58,14 +58,15 @@ class LONG_CALEN_SPREAD:
         self.date_combo_box_stock.configure(state='readonly')
         row_idx = row_idx + 1
         
-        date_var_stock1: StringVar = StringVar()
-        date_var_stock1.set(" ")
-        lbl_exp_date_stock1: Label = Label(top_frame,text='Buy Expiry',justify=LEFT,font=("TkDefaultFont", 10,"bold"))
-        lbl_exp_date_stock1.grid(row=row_idx,column=0,sticky='nsw',padx=pdx,pady=pdy)
-        self.date_combo_box_stock1 = Combobox(top_frame,width=10,textvariable=date_var_stock1) 
-        self.date_combo_box_stock1.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
-        #self.date_combo_box_stock.pack(anchor='nw',fill='y', expand=True, side=TOP)
-        self.date_combo_box_stock1.configure(state='readonly')
+        var_strikes_ofset: StringVar = StringVar()
+        var_strikes_ofset.set(" ")
+        lbl_strikes_ofset: Label = Label(top_frame,text='Strikes +/-',justify=LEFT,font=("TkDefaultFont", 10, "bold"))
+        lbl_strikes_ofset.grid(row=row_idx,column=0,sticky='nsw',padx=pdx,pady=pdy)
+        self.cbox_strikes_ofset = Combobox(top_frame,width=10,textvariable=var_strikes_ofset) 
+        #self.cbox_strikes_ofset.pack(anchor=N, expand=False, side=LEFT)
+        self.cbox_strikes_ofset['values'] = list(range(1,20,1))
+        self.cbox_strikes_ofset.configure(state='readonly')
+        self.cbox_strikes_ofset.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
         row_idx = row_idx + 1
         
         var_lot_size: StringVar = StringVar()
@@ -79,27 +80,10 @@ class LONG_CALEN_SPREAD:
         self.qty_combo_box.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
         row_idx = row_idx + 1
         
-        var_vix: StringVar = StringVar()
-        var_vix.set(" ")
-        lbl_vix: Label = Label(top_frame,text='CE strikes away',justify=LEFT,font=("TkDefaultFont", 10, "bold"))
-        lbl_vix.grid(row=row_idx,column=0,sticky='nsw',padx=pdx,pady=pdy)
-        self.vix_combo_box = Combobox(top_frame,width=10,textvariable=var_vix) 
-        self.vix_combo_box.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
-        self.vix_combo_box.configure(state='readonly')
-        self.vix_combo_box['values'] = list(range(1, 11, 1))
-        self.vix_combo_box.bind('<<ComboboxSelected>>', self.set_VIX)
-        row_idx = row_idx + 1
-        
         self.start_button: Button = tk.Button(top_frame,text='Trade',command=self.main_recursive,width=15,bg='green',fg='white',font=("TkDefaultFont", 10, "bold"))
         #self.start_button.pack(anchor=N, expand=False, side=LEFT)
         self.start_button.grid(row=row_idx,column=0,sticky='nsw',columnspan=2)#,padx=pdx,pady=pdy)
         self.start_button.configure(state='disabled')
-        row_idx = row_idx + 1
-        
-        self.import_button: Button = tk.Button(top_frame,text='Manual',command=self.import_iron_condor,width=15,bg='red',fg='white',font=("TkDefaultFont", 10, "bold"))
-        #self.import_button.pack(anchor=N, expand=False, side=LEFT)
-        self.import_button.grid(row=row_idx,column=0,sticky='nsw',columnspan=2)#,padx=pdx,pady=pdy)
-        self.import_button.configure(state='disabled')
         row_idx = row_idx + 1
         
         self.load_button: Button = tk.Button(top_frame,text='Load trade',command=self.load_file,width=15,bg='yellow',fg='black',font=("TkDefaultFont", 10, "bold"))
@@ -134,13 +118,12 @@ class LONG_CALEN_SPREAD:
     
     def save_current_data(self):
         save_name =\
-        self.root.default_save_dir+self.combo_box_stock.get()+'_'+self.date_combo_box_stock.get()+'_'+self.date_combo_box_stock1.get()+'_'+date.today().strftime("%b-%d-%Y")+'.csv.lcs'
+        self.root.default_save_dir+self.combo_box_stock.get()+'_'+self.date_combo_box_stock.get()+'_'+date.today().strftime("%b-%d-%Y")+'.csv.lcs'
         if(not path.exists(save_name)):
             df_export: pd.DataFrame = pd.DataFrame()
             df_export['Strikes'] = (self.df['Strikes'].tolist())[0:-1]
             df_export['Buy_price'] = (self.df['My_price'].tolist())[0:-1]
             df_export['Qty'] = [(self.df['Qty'].tolist())[0]]*2
-            df_export['Strikes_away'] = [self.strikes_away]*2
             df_export.to_csv(save_name)
 
     def load_file(self): 
@@ -150,10 +133,8 @@ class LONG_CALEN_SPREAD:
         self.imp_my_buy_price = self.df_loaded['Buy_price'].tolist()
         qty = (self.df_loaded['Qty'].tolist())[0]
         name_split = (os.path.basename(file.name)).split('_')
-        self.vix_combo_box.set((self.df_loaded['Strikes_away'].tolist())[0])
         self.combo_box_stock.set(name_split[0])
         self.date_combo_box_stock.set(name_split[1])
-        self.date_combo_box_stock1.set(name_split[2])
         self.qty_combo_box.set(qty)
         self.nse_adapter.set_stock(self.combo_box_stock.get())
         self.main_recursive()
@@ -227,12 +208,11 @@ class LONG_CALEN_SPREAD:
         self.nse_adapter.set_stock(self.combo_box_stock.get())
         self.nse_adapter.get_expiry_dates()
         self.date_combo_box_stock['values'] = tuple(self.nse_adapter.expiry_dates)
-        self.date_combo_box_stock1['values'] = tuple(self.nse_adapter.expiry_dates)
         qtys = [x*int(self.root.indices_lot[self.combo_box_stock.get()]) for x in range(1,11)]
         self.qty_combo_box['values'] = qtys
         self.date_combo_box_stock.set(self.nse_adapter.expiry_dates[0])
-        self.date_combo_box_stock1.set(self.nse_adapter.expiry_dates[1])
         self.qty_combo_box.set(qtys[0])
+        self.start_button.configure(state='normal')
     
     def main_recursive(self)->None:
         if(self.first_run):
@@ -292,23 +272,11 @@ class LONG_CALEN_SPREAD:
                                    if (str(data['expiryDate']).lower() == str(match_date).lower())]
         ce_values: List[dict] = [data['CE'] for data in json_data['records']['data'] \
                     if "CE" in data and (str(data['expiryDate'].lower()) == str(match_date.lower()))]
+        pe_values: List[dict] = [data['PE'] for data in json_data['records']['data'] \
+                    if "PE" in data and (str(data['expiryDate'].lower()) == str(match_date.lower()))]
          
         ce_data: pd.DataFrame = pd.DataFrame(ce_values)
-        
-        match_date = self.date_combo_box_stock1.get()
-        ce_values: List[dict] = [data['CE'] for data in json_data['records']['data'] \
-                    if "CE" in data and (str(data['expiryDate'].lower()) == str(match_date.lower()))]
-         
-        ce_data_nxt_expiry: pd.DataFrame = pd.DataFrame(ce_values)
-       
-        #print(list(ce_data.columns))
-        
-        ce_otm_data: pd.DataFrame = pd.DataFrame()
-
-        ce_otm_data_nxt_expiry: pd.DataFrame = pd.DataFrame()
-        
-
-        
+        pe_data: pd.DataFrame = pd.DataFrame(pe_values)
         
         curr_price = ce_data['underlyingValue'][0]
         #self.sh_window.title('Paper trading-->'+self.combo_box_stock.get()+' ('+str(curr_price)+' ) @--'+datetime.now().strftime("%H:%M:%S"))
@@ -317,22 +285,21 @@ class LONG_CALEN_SPREAD:
             self.min_pos = diff.index(min(diff))
             self.my_atm = strike_prices[self.min_pos]
             
-        strike_idx = int(self.min_pos + self.strikes_away)
+        sell_ce_idx = int(self.min_pos)+int(self.cbox_strikes_ofset.get())
+        sell_pe_idx = int(self.min_pos)-int(self.cbox_strikes_ofset.get())
         if(len(self.imp_strikes)==0):
-            ce_otm_data = ce_data.iloc[strike_idx]
-            ce_otm_data_nxt_expiry = ce_data_nxt_expiry.iloc[strike_idx]
+            ce_otm_data = ce_data.iloc[sell_ce_idx]
+            pe_otm_data = pe_data.iloc[sell_pe_idx]
         else:
             ce_otm_data = ce_data.iloc[iron_condor_strikes[0]]
-            ce_otm_data_nxt_expiry = ce_data_nxt_expiry.iloc[iron_condor_strikes[1]]
+            pe_otm_data = pe_data.iloc[iron_condor_strikes[0]]
             
-        sell_ce_idx = strike_idx
-        buy_ce_idx = strike_idx
             
             
 
         
-        pd_concat = pd.concat([ce_otm_data,ce_otm_data_nxt_expiry],axis=0)
-        sell_buy_signs = [-1.,1.]
+        pd_concat = pd.concat([ce_otm_data,pe_otm_data],axis=0)
+        sell_buy_signs = [-1.,-1.]
         lot_list = [float(self.qty_combo_box.get())]*2
         qty_list = list(map(mul,lot_list,sell_buy_signs))
         ltp_list = list(map(float,pd_concat['lastPrice'].tolist()))
@@ -352,22 +319,21 @@ class LONG_CALEN_SPREAD:
         df['OI_change'] = df['OI_change'].round(3)
         total_row = {'Strikes':' ','Qty':' ','My_price':str(round(sum(net_points),2)),'LTP':'Total ','P&L':df['P&L'].sum(),'OI_change': ' '}
         df = df.append(total_row,ignore_index=True)
-
         
         for i in range(len(strike_prices)):
+            if(i>=sell_pe_idx):
+                val = self.my_buy_price[1]
+            else:
+                val = self.my_buy_price[1]-abs(strike_prices[i]-strike_prices[sell_pe_idx])
+            self.sell_pe_pl.append(val)
+            
             if(i<=sell_ce_idx):
                 val = self.my_buy_price[0]
             else:
                 val = self.my_buy_price[0]-abs(strike_prices[i]-strike_prices[sell_ce_idx])
             self.sell_ce_pl.append(val)
-            
-            if(i<=buy_ce_idx):
-                val = -self.my_buy_price[1]
-            else:
-                val = abs(strike_prices[i]-strike_prices[buy_ce_idx])-self.my_buy_price[1]
-            self.buy_ce_pl.append(val)
         
-        comb_pl = list(map(add,self.buy_ce_pl,self.sell_ce_pl)) 
+        comb_pl = list(map(add,self.sell_ce_pl,self.sell_pe_pl)) 
         comb_pl = list(map(lambda x:x*float(self.qty_combo_box.get()),comb_pl))
         df_graph['sell_call'] = comb_pl
 
@@ -384,10 +350,10 @@ class LONG_CALEN_SPREAD:
     def draw_plot(self):
         self.plot1.clear()
         self.plot1.plot(self.strike_prices,self.comb_pl,'-b',lw=.8)
-        self.plot1.plot(self.strike_prices,self.sell_ce_pl,'--',lw=.5,label='SELL CE'\
-        +str((self.df['Strikes'].tolist())[0])+'>'+str((self.df['P&L'].tolist())[0])+')')
-        self.plot1.plot(self.strike_prices,self.buy_ce_pl,'--',lw=.5,label='BUY CE'\
-        +str((self.df['Strikes'].tolist())[1])+'>'+str((self.df['P&L'].tolist())[1])+')')
+        self.plot1.plot(self.strike_prices,self.sell_pe_pl,'--',lw=.5,label='SELL PE ('\
+        +str((self.df['Strikes'].tolist())[1])+'>'+str((self.df['P&L'].tolist())[0])+')')
+        self.plot1.plot(self.strike_prices,self.sell_ce_pl,'--',lw=.5,label='SELL CE ('\
+        +str((self.df['Strikes'].tolist())[0])+'>'+str((self.df['P&L'].tolist())[1])+')')
         self.plot1.legend()
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[0],linestyle='--',color='g',lw=.8)
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[1],linestyle='--',color='r',lw=.8)

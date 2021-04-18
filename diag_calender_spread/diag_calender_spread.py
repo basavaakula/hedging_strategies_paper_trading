@@ -7,14 +7,9 @@ from imports.packages import *
 
 class DIAG_CALEN_SPREAD:
     def __init__(self,root)->None:
-        self.save_direc = '/home/abasava/MEGA/Personal_docs/paper_trade_journals/'
         self.first_run = True
         self.stop = False
         self.interval = 10.
-        self.buy_pe_limit: List[float] = []
-        self.sell_pe_limit: List[float] = []
-        self.sell_ce_limit: List[float] = []
-        self.buy_ce_limit: List[float] = []
         self.imp_strikes: List[float] = []
         self.imp_my_buy_price: List[float] = []
         self.nse_adapter = NC.OC_DATA()
@@ -57,6 +52,7 @@ class DIAG_CALEN_SPREAD:
         self.date_combo_box_stock.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
         #self.date_combo_box_stock.pack(anchor='nw',fill='y', expand=True, side=TOP)
         self.date_combo_box_stock.configure(state='readonly')
+
         row_idx = row_idx + 1
         
         date_var_stock1: StringVar = StringVar()
@@ -107,12 +103,12 @@ class DIAG_CALEN_SPREAD:
         self.load_button.grid(row=row_idx,column=0,sticky='nsw',columnspan=2)
         self.load_button.configure(state='normal')
         
-        fig = Figure(figsize = (3, 3), dpi = 200) 
+        self.fig = Figure(figsize = (3, 3), dpi = 200) 
         #fig.subplots_adjust(left=0, right=1, top=1, bottom=0) 
-        self.plot1 = fig.add_subplot(111)
+        self.plot1 = self.fig.add_subplot(111)
         self.plot1.tick_params(axis='both', which='minor', labelsize=8)
 
-        self.canvas = FigureCanvasTkAgg(fig,master = bot_frame)
+        self.canvas = FigureCanvasTkAgg(self.fig,master = bot_frame)
         #self.canvas.get_tk_widget().grid(row=1,column=1,sticky='nswe',padx=pdx,pady=pdy) 
         self.canvas.get_tk_widget().pack(fill='both',expand=True,side=TOP)
           
@@ -134,26 +130,29 @@ class DIAG_CALEN_SPREAD:
         self.import_button.configure(state='disabled')
     
     def save_current_data(self):
-        save_name = self.save_direc+self.combo_box_stock.get()+'_'+self.date_combo_box_stock.get()+'_'+date.today().strftime("%b-%d-%Y")+'.csv'
+        save_name =\
+        self.root.default_save_dir+self.combo_box_stock.get()+'_'+self.date_combo_box_stock.get()+'_'+self.date_combo_box_stock1.get()+'_'+date.today().strftime("%b-%d-%Y")+'.csv.dcs'
         if(not path.exists(save_name)):
             df_export: pd.DataFrame = pd.DataFrame()
-            df_export['Strikes'] = (self.df['Strikes'].tolist())[0:-1]
-            df_export['Buy_price'] = (self.df['My_price'].tolist())[0:-1]
+            df_export['Strikes'] = (self.df['Strikes'].tolist())
+            df_export['Buy_price'] = (self.df['My_price'].tolist())
             df_export['Qty'] = [(self.df['Qty'].tolist())[0]]*4
             df_export.to_csv(save_name)
 
     def load_file(self): 
-        file = askopenfile(mode ='r', filetypes =[('CSV files', '*.csv')],initialdir=self.save_direc)
-        self.df_loaded: pd.DataFrame = pd.read_csv(file.name)
-        self.imp_strikes = self.df_loaded['Strikes'].tolist()
-        self.imp_my_buy_price = self.df_loaded['Buy_price'].tolist()
-        qty = (self.df_loaded['Qty'].tolist())[0]
-        name_split = (os.path.basename(file.name)).split('_')
-        self.combo_box_stock.set(name_split[0])
-        self.date_combo_box_stock.set(name_split[1])
-        self.qty_combo_box.set(qty)
-        self.nse_adapter.set_stock(self.combo_box_stock.get())
-        self.main_recursive()
+        file = askopenfile(mode ='r', filetypes =[('CSV files', '*.dcs')],initialdir=self.root.default_save_dir)
+        if file is not None:
+            self.df_loaded: pd.DataFrame = pd.read_csv(file.name)
+            self.imp_strikes = self.df_loaded['Strikes'].tolist()
+            self.imp_my_buy_price = self.df_loaded['Buy_price'].tolist()
+            qty = (self.df_loaded['Qty'].tolist())[0]
+            name_split = (os.path.basename(file.name)).split('_')
+            self.combo_box_stock.set(name_split[0])
+            self.date_combo_box_stock.set(name_split[1])
+            self.date_combo_box_stock1.set(name_split[2])
+            self.qty_combo_box.set(qty)
+            self.nse_adapter.set_stock(self.combo_box_stock.get())
+            self.main_recursive()
     
     def open_file(self): 
         file = askopenfile(mode ='r', filetypes =[('CSV files', '*.csv')]) 
@@ -272,7 +271,6 @@ class DIAG_CALEN_SPREAD:
     
     def df_iron_condor(self):
         df: pd.DataFrame = pd.DataFrame()
-        df_graph: pd.DataFrame = pd.DataFrame()
         
         self.buy_pe_pl: List[float] = []
         self.sell_pe_pl: List[float] = []
@@ -313,9 +311,6 @@ class DIAG_CALEN_SPREAD:
         ce_otm_data_nxt_expiry: pd.DataFrame = pd.DataFrame()
         
 
-        strike_diff: List[float] = []
-        
-        
         curr_price = ce_data['underlyingValue'][0]
         #self.sh_window.title('Paper trading-->'+self.combo_box_stock.get()+' ('+str(curr_price)+' ) @--'+datetime.now().strftime("%H:%M:%S"))
         if(self.first_run):
@@ -323,7 +318,6 @@ class DIAG_CALEN_SPREAD:
             min_pos = diff.index(min(diff))
             self.my_atm = strike_prices[min_pos]
             
-        strike_diff = list(map(lambda x:x-self.my_atm,strike_prices))
         
         iron_condor_strikes: List[float] = []
         if(len(self.imp_strikes)==0):
@@ -355,8 +349,8 @@ class DIAG_CALEN_SPREAD:
         else:
             iron_condor_strikes.append(strike_prices.index(self.imp_strikes[0]))
             iron_condor_strikes.append(strike_prices.index(self.imp_strikes[1]))
-            pe_otm_data = pe_data.iloc[iron_condor_strikes[0]] 
-            pe_otm_data_nxt_expiry = pe_data_nxt_expiry.iloc[iron_condor_strikes[1]] 
+            pe_otm_data = pe_data.iloc[iron_condor_strikes[1]] 
+            pe_otm_data_nxt_expiry = pe_data_nxt_expiry.iloc[iron_condor_strikes[0]] 
             buy_pe_idx = iron_condor_strikes[0]
             sell_pe_idx = iron_condor_strikes[1]
             
@@ -375,26 +369,28 @@ class DIAG_CALEN_SPREAD:
         
         pd_concat = pd.concat([pe_otm_data_nxt_expiry,pe_otm_data,ce_otm_data,ce_otm_data_nxt_expiry],axis=0)
         sell_buy_signs = [1.,-1.,-1.,1.]
-        lot_list = [float(self.qty_combo_box.get())]*4
+        lot_list = [float(self.qty_combo_box.get())]*pd_concat.shape[0]#num of rows
         qty_list = list(map(mul,lot_list,sell_buy_signs))
         ltp_list = list(map(float,pd_concat['lastPrice'].tolist()))
+        bid_list = list(map(float,pd_concat['bidprice'].tolist()))
         if(self.first_run and len(self.imp_strikes)==0):
             self.my_buy_price = pd_concat['lastPrice'].tolist()
         
         net_points: List[float] = list(map(mul,sell_buy_signs,self.my_buy_price))
         net_points = list(map(lambda x: x*-1,net_points))
-        tt = list(map(sub,ltp_list,self.my_buy_price))
+        curr_pl = list(map(sub,ltp_list,self.my_buy_price))
+        mkt_pl = list(map(sub,bid_list,self.my_buy_price))
         df['Strikes'] = pd_concat['strikePrice'].tolist() 
         df['Qty'] = qty_list
         df['My_price'] = list(map(float,self.my_buy_price))
         df['LTP'] = ltp_list
-        df['P&L'] = list(map(mul,tt,qty_list))
+        df['P&L'] = list(map(mul,curr_pl,qty_list))
         df['P&L'] =  df['P&L'].round(3)
+        df['Market_P&L'] =  list(map(mul,mkt_pl,qty_list))
         df['OI_change'] =  pd_concat['pchangeinOpenInterest'].tolist()
         df['OI_change'] = df['OI_change'].round(3)
-        total_row = {'Strikes':' ','Qty':' ','My_price':str(round(sum(net_points),2)),'LTP':'Total ','P&L':df['P&L'].sum(),'OI_change': ' '}
-        df = df.append(total_row,ignore_index=True)
-
+        df['ask_price'] = pd_concat['askPrice'].tolist()
+        df['bid_price'] = pd_concat['bidprice'].tolist()
         
         for i in range(len(strike_prices)):
             if(i>=buy_pe_idx):
@@ -421,17 +417,12 @@ class DIAG_CALEN_SPREAD:
                 val = abs(strike_prices[i]-strike_prices[buy_ce_idx])-self.my_buy_price[3]
             self.buy_ce_pl.append(val)
         
-        self.buy_pe_limit.append((pd_concat['strikePrice'].tolist())[0])
-        self.sell_pe_limit.append((pd_concat['strikePrice'].tolist())[1])
-        self.sell_ce_limit.append((pd_concat['strikePrice'].tolist())[2])
-        self.buy_ce_limit.append((pd_concat['strikePrice'].tolist())[3])
-        #self.market_price.append(curr_price)
-        
-        ttl1 = list(map(add,self.buy_pe_pl,self.sell_pe_pl)) 
-        ttl2 = list(map(add,self.buy_ce_pl,self.sell_ce_pl)) 
-        comb_pl = list(map(add,ttl1,ttl2)) 
+        comb_pl: List[float] = [0]*len(strike_prices)
+        comb_pl = list(map(add,comb_pl,self.buy_pe_pl))
+        comb_pl = list(map(add,comb_pl,self.sell_pe_pl))
+        comb_pl = list(map(add,comb_pl,self.sell_ce_pl))
+        comb_pl = list(map(add,comb_pl,self.buy_ce_pl))
         comb_pl = list(map(lambda x:x*float(self.qty_combo_box.get()),comb_pl))
-        df_graph['sell_call'] = comb_pl
 
         self.strike_prices = strike_prices
         self.pd_concat = pd_concat
@@ -446,16 +437,21 @@ class DIAG_CALEN_SPREAD:
     def draw_plot(self):
         self.plot1.clear()
         self.plot1.plot(self.strike_prices,self.comb_pl,'-b',lw=.8)
-        self.plot1.plot(self.strike_prices,self.buy_pe_pl,'--',lw=.5,label='BUY PE')
-        self.plot1.plot(self.strike_prices,self.sell_pe_pl,'--',lw=.5,label='SELL PE')
-        self.plot1.plot(self.strike_prices,self.sell_ce_pl,'--',lw=.5,label='SELL CE')
-        self.plot1.plot(self.strike_prices,self.buy_ce_pl,'--',lw=.5,label='BUY CE')
+        self.plot1.plot(self.strike_prices,self.buy_pe_pl,'--',lw=.5,label='BUY PE ('\
+        +str((self.df['Strikes'].tolist())[0])+'>'+str((self.df['P&L'].tolist())[0])+')')
+        self.plot1.plot(self.strike_prices,self.sell_pe_pl,'--',lw=.5,label='SELL PE ('\
+        +str((self.df['Strikes'].tolist())[1])+'>'+str((self.df['P&L'].tolist())[1])+')')
+        self.plot1.plot(self.strike_prices,self.sell_ce_pl,'--',lw=.5,label='SELL CE ('\
+        +str((self.df['Strikes'].tolist())[2])+'>'+str((self.df['P&L'].tolist())[2])+')')
+        self.plot1.plot(self.strike_prices,self.buy_ce_pl,'--',lw=.5,label='BUY CE ('\
+        +str((self.df['Strikes'].tolist())[3])+'>'+str((self.df['P&L'].tolist())[3])+')')
         self.plot1.legend()
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[0],linestyle='--',color='g',lw=.8)
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[1],linestyle='--',color='r',lw=.8)
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[2],linestyle='--',color='r',lw=.8)
         self.plot1.axvline(x=(self.pd_concat['strikePrice'].tolist())[3],linestyle='--',color='g',lw=.8)
         self.plot1.plot(self.curr_price,self.df['P&L'].iloc[0:-1].sum(),'D',markersize=2)
+        self.plot1.plot(self.curr_price,self.df['Market_P&L'].iloc[0:-1].sum(),'s',markersize=2)
         #self.plot1.plot(self.curr_price,(self.df['P&L'].tolist())[0],'s',markersize=2)
         #self.plot1.plot(self.curr_price,(self.df['P&L'].tolist())[1],'s',markersize=2)
         #self.plot1.plot(self.curr_price,(self.df['P&L'].tolist())[2],'s',markersize=2)
@@ -466,7 +462,10 @@ class DIAG_CALEN_SPREAD:
         if(self.df['P&L'].iloc[0:-1].sum()>0):
             clr = 'green'
         self.plot1.text(1.01*self.curr_price,1.01*self.df['P&L'].iloc[0:-1].sum(),str(self.df['P&L'].iloc[0:-1].sum()),color=clr,fontsize='4')
+        self.plot1.text(1.01*self.curr_price,1.01*self.df['Market_P&L'].iloc[0:-1].sum(),str(self.df['Market_P&L'].iloc[0:-1].sum()),color=clr,fontsize='4')
         self.root.master_wd.title('Paper trading-->'+self.combo_box_stock.get()+' ('+str(self.curr_price)+' ) @--'+datetime.now().strftime("%H:%M:%S"))
+        for l in self.fig.gca().lines:
+            l.set_alpha(self.root.fig_alpha)
         self.canvas.draw()
         
 if __name__ == '__main__':
