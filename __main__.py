@@ -15,6 +15,7 @@ from my_trades import my_trades as MT
 
 class PAPER_TRADING:
     def __init__(self,wd:Tk)->None:
+        wd.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.indices: List[str] = ['NIFTY','BANKNIFTY','DRREDDY','RELIANCE','ASHOKLEY','TATAMOTORS','SBIN']
         self.indices_lot: dict[str,str]={'NIFTY':'75','BANKNIFTY':'25','DRREDDY':'125','RELIANCE':'250','ASHOKLEY':'9000','TATAMOTORS':'5700', \
                                          'SBIN':'3000'}
@@ -36,7 +37,8 @@ class PAPER_TRADING:
         self.setup_interface(wd)
         for strat in enumerate(self.strategies.keys()):
             self.strategies[strat[1]].setup_gui(self.NBF[strat[0]])
-    
+    def on_closing(self):
+        self.master_wd.destroy()
     def set_active_strategy_tab(self,event)->None:
         active_strat = self.cb_strategy.get()
         #for i in range(len(self.strategies)):
@@ -67,15 +69,15 @@ class PAPER_TRADING:
         
         pdx = 5
         pdy = 5
-        var_stock: StringVar = StringVar()
-        var_stock.set(" ")
-        lbl_stock: Label = Label(top_frame,text='Underlying',justify=LEFT,font=("TkDefaultFont", 10,"bold"),width=10)
-        lbl_stock.grid(row=0,column=0,sticky='nw',padx=pdx,pady=pdy)
-        self.combo_box_stock = Combobox(top_frame,width=10,textvariable=var_stock) 
-        self.combo_box_stock.grid(row=0,column=1,sticky='nw',padx=pdx,pady=pdy)
-        self.combo_box_stock.configure(state='readonly')
-        #self.combo_box_stock['values'] = self.indices
-        #self.combo_box_stock.bind('<<ComboboxSelected>>', self.set_expiry_date)
+        #var_stock: StringVar = StringVar()
+        #var_stock.set(" ")
+        #lbl_stock: Label = Label(top_frame,text='Underlying',justify=LEFT,font=("TkDefaultFont", 10,"bold"),width=10)
+        #lbl_stock.grid(row=0,column=0,sticky='nw',padx=pdx,pady=pdy)
+        #self.combo_box_stock = Combobox(top_frame,width=10,textvariable=var_stock) 
+        #self.combo_box_stock.grid(row=0,column=1,sticky='nw',padx=pdx,pady=pdy)
+        #self.combo_box_stock.configure(state='readonly')
+        ##self.combo_box_stock['values'] = self.indices
+        ##self.combo_box_stock.bind('<<ComboboxSelected>>', self.set_expiry_date)
         
         var_strat: StringVar = StringVar()
         var_strat.set(" ")
