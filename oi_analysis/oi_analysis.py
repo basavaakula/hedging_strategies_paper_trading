@@ -18,7 +18,7 @@ class OI_ANALYSIS:
     def setup_gui(self,my_master: Frame)->None:
         self.master_wd = my_master
         top_frame: Frame = Frame(my_master)
-        top_frame.pack(anchor='nw',fill='y', expand=True, side=LEFT)
+        top_frame.pack(anchor='nw',fill='y', expand=False, side=LEFT)
         bot_frame: Frame = Frame(my_master)
         bot_frame.pack(fill='both', expand=True, side=LEFT)
         pdx = 1
@@ -50,9 +50,20 @@ class OI_ANALYSIS:
         self.date_combo_box_stock.bind('<<ComboboxSelected>>', self.event_chng_expiry_date)
         row_idx = row_idx + 1
         
+        intvl_var_stock: StringVar = StringVar()
+        intvl_var_stock.set(" ")
+        lbl_intvl: Label = Label(top_frame,text='Refresh (seconds)',justify=LEFT,font=("TkDefaultFont", 10,"bold"))
+        lbl_intvl.grid(row=row_idx,column=0,sticky='nsw',padx=pdx,pady=pdy)
+        self.cbox_intvl = Combobox(top_frame,width=10,textvariable=intvl_var_stock) 
+        self.cbox_intvl.grid(row=row_idx,column=1,sticky='nsw',padx=pdx,pady=pdy)
+        self.cbox_intvl.configure(state='readonly')
+        self.cbox_intvl['values'] = list(range(10, 600, 20))
+        self.cbox_intvl.bind('<<ComboboxSelected>>', self.event_chng_intvl)
+        row_idx = row_idx + 1
+        
         
         #self.start_button: Button = tk.Button(top_frame,text='Fetch OI',command=self.main_recursive,width=15,bg='green',fg='white',font=("TkDefaultFont", 10, "bold"))
-        self.start_button: Button = tk.Button(top_frame,text='Fetch OI',command=self.plot_oi,width=15,bg='green',fg='white',font=("TkDefaultFont", 10, "bold"))
+        self.start_button: Button = tk.Button(top_frame,text='Fetch OI',command=self.main_recursive,width=15,bg='green',fg='white',font=("TkDefaultFont", 10, "bold"))
         self.start_button.grid(row=row_idx,column=0,sticky='nsw',columnspan=2)#,padx=pdx,pady=pdy)
         self.start_button.configure(state='disabled')
         row_idx = row_idx + 1
@@ -75,6 +86,9 @@ class OI_ANALYSIS:
         self.nse_adapter.get_expiry_dates()
         self.date_combo_box_stock['values'] = tuple(self.nse_adapter.expiry_dates)
         self.date_combo_box_stock.set('---')
+    
+    def event_chng_intvl(self,event):
+        self.interval = int(self.cbox_intvl.get())
     
     def event_chng_expiry_date(self,event):
         self.start_button.configure(state='normal')
@@ -124,7 +138,7 @@ class OI_ANALYSIS:
 
     
     def plot_oi(self):
-        df: pd.DataFrame = pd.DataFrame()
+        #print('************* REFRESHING *****************')
         self.processed_df: pd.DataFrame = pd.DataFrame()
         
         self.buy_pe_pl: List[float] = []
@@ -159,20 +173,29 @@ class OI_ANALYSIS:
         rects1 = self.plot1.bar(strike_prices, ce_data['openInterest'], width, label='OI',color='green',alpha=0.5)
         rects2 = self.plot1.bar(strike_prices, pe_data['openInterest'], width, label='OI',color='red',alpha=0.2)
         self.all_bars = [rects1,rects2]
+        self.plot2.clear()
         rects1 = self.plot2.bar(strike_prices, ce_data['changeinOpenInterest'], width, label='OI',color='green',alpha=0.5)
         rects2 = self.plot2.bar(strike_prices, pe_data['changeinOpenInterest'], width, label='OI',color='red',alpha=0.2)
+        self.all_bars2 = [rects1,rects2]
 
         #print(list(ce_data.columns))
         
         fsize = 10
         self.plot1.set_ylabel('Open Interest',fontsize = fsize)
-        self.plot1.set_title('OI analysis',fontsize = fsize)
+        self.plot1.set_title('OI analysis--->'+datetime.now().strftime("%H:%M:%S"),fontsize = fsize)
         self.plot1.set_xticks(strike_prices)
         self.plot1.set_xticklabels(strike_prices,rotation=0)
         self.plot1.tick_params(axis='both', which='major', labelsize=fsize)
         self.plot1.locator_params(axis='x', nbins=10)
         self.plot1.axvline(x=my_atm,linestyle='--',color='g',lw=1.)
 
+        self.plot2.set_ylabel('Change in OI',fontsize = fsize)
+        self.plot2.set_xticks(strike_prices)
+        self.plot2.set_xticklabels(strike_prices,rotation=0)
+        self.plot2.tick_params(axis='both', which='major', labelsize=fsize)
+        self.plot2.locator_params(axis='x', nbins=10)
+        self.plot2.axvline(x=my_atm,linestyle='--',color='g',lw=1.)
+        
         self.canvas.draw()
         self.canvas.mpl_connect("motion_notify_event", self.hover)
 
@@ -182,6 +205,12 @@ class OI_ANALYSIS:
                     bbox=dict(boxstyle="round", fc="black", edgecolor="white", lw=2,alpha=0.1),
                     arrowprops=dict(arrowstyle="->"),fontsize=10)
         self.annot.set_visible(False)
+        
+        self.annot1 = self.plot2.annotate("", xy=(0,0), xytext=(-20,20),textcoords="offset points",
+                    bbox=dict(boxstyle="round", fc="black", edgecolor="white", lw=2,alpha=0.1),
+                    arrowprops=dict(arrowstyle="->"),fontsize=10)
+        self.annot1.set_visible(False)
+        self.prev_time = time.time()
 
     def update_annot(self,bar):
         strike_price = bar.get_x()+bar.get_width()/2.
@@ -195,9 +224,21 @@ class OI_ANALYSIS:
         self.annot.set_text(text)
         self.annot.get_bbox_patch().set_alpha(0.4)
 
+    def update_annot1(self,bar):
+        strike_price = bar.get_x()+bar.get_width()/2.
+        x = bar.get_x()+bar.get_width()/2.
+        y = bar.get_y()+bar.get_height()
+        max_strike = (self.processed_df['strikePrice'].tolist())[-1]
+        self.annot1.xy = (max_strike,y)
+        pcr = self.processed_df.loc[self.processed_df['strikePrice']==strike_price]
+        pcr = (pcr['PCR'].tolist())[0]
+        text = "{:.1f}\nPCR : {:.3f}".format(strike_price,pcr)
+        self.annot1.set_text(text)
+        self.annot1.get_bbox_patch().set_alpha(0.4)
 
     def hover(self,event):
         vis = self.annot.get_visible()
+        vis1 = self.annot1.get_visible()
         if event.inaxes == self.plot1:
             for bar_obj in self.all_bars:
                 for bar in bar_obj:
@@ -207,10 +248,21 @@ class OI_ANALYSIS:
                         self.annot.set_visible(True)
                         self.canvas.draw_idle()
                         return
+        if event.inaxes == self.plot2:
+            for bar_obj in self.all_bars2:
+                for bar in bar_obj:
+                    cont, ind = bar.contains(event)
+                    if cont:
+                        self.update_annot1(bar)
+                        self.annot1.set_visible(True)
+                        self.canvas.draw_idle()
+                        return
         if vis:
             self.annot.set_visible(False)
             self.canvas.draw_idle()
-
+        if vis1:
+            self.annot1.set_visible(False)
+            self.canvas.draw_idle()
         
         
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ class IRON_FLY:
     def setup_gui(self,my_master: Frame)->None:
         self.master_wd = my_master
         top_frame: Frame = Frame(my_master)
-        top_frame.pack(anchor='nw',fill='y', expand=True, side=LEFT)
+        top_frame.pack(anchor='nw',fill='y', expand=False, side=LEFT)
         bot_frame: Frame = Frame(my_master)
         bot_frame.pack(fill='both', expand=True, side=LEFT)
         pdx = 1
