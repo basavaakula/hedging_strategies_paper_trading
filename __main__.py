@@ -45,6 +45,7 @@ class PAPER_TRADING:
         for strat in enumerate(self.strategies.keys()):
             self.strategies[strat[1]].setup_gui(self.NBF[strat[0]])
     def on_closing(self):
+        self.master_wd.quit()#without this statement the process runs in background
         self.master_wd.destroy()
     def set_active_strategy_tab(self,event)->None:
         active_strat = self.cb_strategy.get()
