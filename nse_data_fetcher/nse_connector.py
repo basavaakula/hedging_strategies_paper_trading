@@ -37,7 +37,7 @@ class OC_DATA():
          
         self.ce_data: pd.DataFrame = pd.DataFrame(ce_values)
         self.pe_data: pd.DataFrame = pd.DataFrame(pe_values)
-
+        
         self.spot_price = self.ce_data['underlyingValue'][0]
         self.atm = self.get_closest_strike(self.spot_price)
 

@@ -5,6 +5,9 @@ from iron_condor import iron_condor as IC
 from iron_fly import iron_fly as IF
 from oi_analysis import oi_analysis as OI
 from oi_history import oi_history as OIH
+from oi_live import oi_live as OIL
+from oi_chart_hist import oi_chart_hist as OCH
+from option_chain import option_chain as OC
 from diag_calender_spread import diag_calender_spread as DCS
 from long_calender_spread import long_calender_spread as LCS
 from long_straddle import long_straddle as LS
@@ -16,15 +19,18 @@ from my_trades import my_trades as MT
 class PAPER_TRADING:
     def __init__(self,wd:Tk)->None:
         wd.protocol("WM_DELETE_WINDOW", self.on_closing)
-        self.indices: List[str] = ['NIFTY','BANKNIFTY','DRREDDY','RELIANCE','ASHOKLEY','TATAMOTORS','SBIN']
-        self.indices_lot: dict[str,str]={'NIFTY':'75','BANKNIFTY':'25','DRREDDY':'125','RELIANCE':'250','ASHOKLEY':'9000','TATAMOTORS':'5700', \
+        self.indices: List[str] = ['NIFTY','BANKNIFTY','ICICIBANK','DRREDDY','RELIANCE','ASHOKLEY','TATAMOTORS','SBIN']
+        self.indices_lot: dict[str,str]={'NIFTY':'75','BANKNIFTY':'25','ICICIBANK':'1375','DRREDDY':'125','RELIANCE':'250','ASHOKLEY':'9000','TATAMOTORS':'5700', \
                                          'SBIN':'3000'}
         self.fig_alpha = .3
         self.default_save_dir = '/home/abasava/MEGA/Personal_docs/paper_trade_journals/'
         self.ic  = IC.IRON_CONDOR(self)
         self.iff  = IF.IRON_FLY(self)
         self.oia  = OI.OI_ANALYSIS(self)
+        self.oc  = OC.OCHAIN(self)
+        self.och  = OCH.OI_CH_HIST(self)
         self.oih  = OIH.OI_HISTORY(self)
+        self.oil  = OIL.OI_LIVE(self)
         self.dcs = DCS.DIAG_CALEN_SPREAD(self)
         self.lcs = LCS.LONG_CALEN_SPREAD(self)
         self.ls = LS.LONG_STRADDLE(self)
@@ -32,8 +38,9 @@ class PAPER_TRADING:
         self.sst = SST.SHORT_STRANGLE(self)
         self.mt = MT.MY_TRADES(self)
         self.strategies =\
-        {'iron_condor':self.ic,'diag_calender_spread':self.dcs,'long_calender_spread':self.lcs,'long_straddle':self.ls,'short_straddle':self.ss,\
-        'short_strangle':self.sst,'iron_fly':self.iff,'oi_analysis':self.oia,'oi_history':self.oih,'TRADES':self.mt}
+                {'option_chain':self.oc,'oi_charts_hist':self.och,'iron_condor':self.ic,'diag_calender_spread':self.dcs,'long_calender_spread':self.lcs,\
+                'long_straddle':self.ls,'short_straddle':self.ss,'short_strangle':self.sst,'iron_fly':self.iff,'oi_charts':self.oia,\
+                'oi_history':self.oih,'TRADES':self.mt,'oi_live':self.oil}
         self.setup_interface(wd)
         for strat in enumerate(self.strategies.keys()):
             self.strategies[strat[1]].setup_gui(self.NBF[strat[0]])
